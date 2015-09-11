@@ -4,12 +4,10 @@ import org.apache.commons.lang.StringUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * Created by Administrator on 2015/9/11 0011.
+ * @author nym
  */
 public class Signer {
 
