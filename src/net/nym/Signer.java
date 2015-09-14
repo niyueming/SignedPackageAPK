@@ -18,15 +18,16 @@ public class Signer {
      * @param key 别名
      * @param keypass 别名密码
      * @param unSigned 未签名文件File
+     * @param isRetainSignedFile 是否保留signed的文件
      *
      * */
-    public static String signedAndAligned(File keystore,String storepass,String key,String keypass,File unSigned){
+    public static String signedAndAligned(File keystore,String storepass,String key,String keypass,File unSigned,boolean isRetainSignedFile){
         String signStr = signed(keystore,storepass,key,keypass,unSigned);
         if (signStr.contains("失败")){
             return signStr;
         }
         File signed = new File(signStr.substring(signStr.lastIndexOf(":") + 1));
-        String alignStr = aligned(signed);
+        String alignStr = aligned(signed,isRetainSignedFile);
         return String.format("%s\n%s",signStr,alignStr);
     }
 
@@ -39,14 +40,15 @@ public class Signer {
      * @param keypass 别名密码
      * @param unSigned 未签名文件File
      * @param signed 签名后文件File路径
+     * @param isRetainSignedFile 是否保留signed的文件
      *
      * */
-    public static String signedAndAligned(File keystore,String storepass,String key,String keypass,File unSigned,File signed){
+    public static String signedAndAligned(File keystore,String storepass,String key,String keypass,File unSigned,File signed,boolean isRetainSignedFile){
         String signStr = signed(keystore,storepass,key,keypass,unSigned,signed);
         if (signStr.contains("失败")){
             return signStr;
         }
-        String alignStr = aligned(signed);
+        String alignStr = aligned(signed,isRetainSignedFile);
         return String.format("%s\n%s",signStr,alignStr);
     }
 
@@ -60,14 +62,15 @@ public class Signer {
      * @param unSigned 未签名文件File
      * @param signed 签名后文件File路径
      * @param aligned 压缩对齐后文件File
+     * @param isRetainSignedFile 是否保留signed的文件
      *
      * */
-    public static String signedAndAligned(File keystore,String storepass,String key,String keypass,File unSigned,File signed,File aligned){
+    public static String signedAndAligned(File keystore,String storepass,String key,String keypass,File unSigned,File signed,File aligned,boolean isRetainSignedFile){
         String signStr = signed(keystore,storepass,key,keypass,unSigned,signed);
         if (signStr.contains("失败")){
             return signStr;
         }
-        String alignStr = aligned(signed,aligned);
+        String alignStr = aligned(signed,aligned,isRetainSignedFile);
         return String.format("%s\n%s",signStr,alignStr);
     }
 
@@ -139,9 +142,10 @@ public class Signer {
     /**
      * 用zipalign(压缩对齐)优化你的签名后APK文件
      * @param signed 签名后文件File路径(未签名的apk不可优化)
+     * @param isRetainSignedFile 是否保留signed的文件
      *
      * */
-    public static String aligned(File signed){
+    public static String aligned(File signed,boolean isRetainSignedFile){
         File aligned = null;
         if (signed.getAbsolutePath().lastIndexOf(".") != -1){
             aligned = new File(signed.getParentFile(),signed.getName().substring(0,signed.getName().lastIndexOf(".")) + "_aligned.apk");
@@ -149,16 +153,17 @@ public class Signer {
             aligned = new File(signed.getAbsolutePath() + "_aligned.apk");
         }
 
-        return aligned(signed,aligned);
+        return aligned(signed,aligned,isRetainSignedFile);
     }
 
     /**
      * 用zipalign(压缩对齐)优化你的签名后APK文件
      * @param signed 签名后文件File路径(未签名的apk不可优化)
      * @param aligned 压缩对齐后文件File
+     * @param isRetainSignedFile 是否保留signed的文件
      *
      * */
-    public static String aligned(File signed,File aligned){
+    public static String aligned(final File signed,File aligned,final boolean isRetainSignedFile){
         if (!signed.exists()){
             throw new RuntimeException("file signed is not exist");
         }
@@ -185,6 +190,19 @@ public class Signer {
              * 签名之后，用zipalign(压缩对齐)优化你的APK文件
              * */
             Runtime.getRuntime().exec(String.format("zipalign -v 4 %s %s", signed.getAbsolutePath(), aligned.getAbsolutePath()));
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        Thread.sleep(3000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    if (!isRetainSignedFile){
+                        signed.delete();
+                    }
+                }
+            }).start();
             return String.format("%s优化(zipalign)成功，优化后文件路径:%s",signed.getName(),aligned.getAbsolutePath());
         } catch (IOException e) {
             e.printStackTrace();

@@ -1,6 +1,8 @@
 package net.nym;
 
 
+import org.apache.commons.lang.StringUtils;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -19,6 +21,12 @@ public class MyDisplay implements ActionListener {
     JButton sourceButton;
     JTextField targetEdit;
     JButton targetButton;
+    JTextField keyStoreEdit;
+    JButton keyStoreButton;
+    JTextField keyStorePasswordEdit;
+    JTextField keyStoreAliasEdit;
+    JTextField keyStoreAliasPasswordEdit;
+    JButton confirm;
 
     public MyDisplay(){
 
@@ -79,11 +87,56 @@ public class MyDisplay implements ActionListener {
 
         JPanel signDir = new JPanel(new GridLayout(4,1));
         signDir.setBorder(BorderFactory.createTitledBorder("签名文件"));
+        JPanel keyStorePath = new JPanel(new BorderLayout(10,10));
+        JLabel keyStoreText = new JLabel("KeyStore路径：");
+        keyStoreText.setSize(100, 30);
+        keyStorePath.add(keyStoreText, BorderLayout.WEST);
+        keyStoreEdit = new JTextField("");
+        keyStoreEdit.setSize(200, 20);
+        keyStorePath.add(keyStoreEdit, BorderLayout.CENTER);
+        keyStoreButton = new JButton("打开");
+        keyStoreButton.setSize(200, 30);
+        keyStoreButton.addActionListener(this);
+        keyStorePath.add(keyStoreButton, BorderLayout.EAST);
+        signDir.add(keyStorePath);
+
+        JPanel keyStorePassword = new JPanel(new BorderLayout(10,10));
+        JLabel keyStorePasswordText = new JLabel("KeyStore密码：");
+        keyStorePasswordText.setSize(100, 30);
+        keyStorePassword.add(keyStorePasswordText, BorderLayout.WEST);
+        keyStorePasswordEdit = new JTextField("");
+        keyStorePasswordEdit.setSize(200, 20);
+        keyStorePassword.add(keyStorePasswordEdit, BorderLayout.CENTER);
+        signDir.add(keyStorePassword);
+
+        JPanel keyStoreAlias = new JPanel(new BorderLayout(10,10));
+        JLabel keyStoreAliasText = new JLabel("KeyStore别名：");
+        keyStoreAliasText.setSize(100, 30);
+        keyStoreAlias.add(keyStoreAliasText, BorderLayout.WEST);
+        keyStoreAliasEdit = new JTextField("");
+        keyStoreAliasEdit.setSize(200, 20);
+        keyStoreAlias.add(keyStoreAliasEdit, BorderLayout.CENTER);
+        signDir.add(keyStoreAlias);
+
+        JPanel keyStoreAliasPassword = new JPanel(new BorderLayout(10,10));
+        JLabel keyStoreAliasPasswordText = new JLabel("别名密码：");
+        keyStoreAliasPasswordText.setSize(100, 30);
+        keyStoreAliasPassword.add(keyStoreAliasPasswordText, BorderLayout.WEST);
+        keyStoreAliasPasswordEdit = new JTextField("");
+        keyStoreAliasPasswordEdit.setSize(200, 20);
+        keyStoreAliasPassword.add(keyStoreAliasPasswordEdit, BorderLayout.CENTER);
+        signDir.add(keyStoreAliasPassword);
 
         gridBagConstraints.gridwidth = GridBagConstraints.REMAINDER;
         gridBagConstraints.weightx = 1.0;
         addComponent(content, signDir, gridBagLayout, gridBagConstraints);
 
+        confirm = new JButton();
+        confirm.setText("运行");
+        confirm.addActionListener(this);
+        gridBagConstraints.gridwidth = GridBagConstraints.REMAINDER;
+        gridBagConstraints.weightx = 1.0;
+        addComponent(content,confirm,gridBagLayout,gridBagConstraints);
 
         frame.setVisible(true);
     }
@@ -111,6 +164,61 @@ public class MyDisplay implements ActionListener {
             jFileChooser.showOpenDialog(targetButton);
             targetEdit.setText(jFileChooser.getSelectedFile().getAbsolutePath());
             fileLocation = jFileChooser.getSelectedFile().getAbsolutePath();
+        }
+        if (e.getSource().equals(keyStoreButton)){
+            JFileChooser jFileChooser = new JFileChooser();
+            jFileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+            jFileChooser.setCurrentDirectory(new File(fileLocation));
+            jFileChooser.showOpenDialog(keyStoreButton);
+            keyStoreEdit.setText(jFileChooser.getSelectedFile().getAbsolutePath());
+            fileLocation = jFileChooser.getSelectedFile().getParent();
+        }
+        if (e.getSource().equals(confirm)){
+            final File sourceDir = new File(sourceEdit.getText().trim());
+            final File targetDir = new File(targetEdit.getText().trim());
+            final File keyStoreFile = new File(keyStoreEdit.getText().trim());
+            final String keyStorePassword = keyStorePasswordEdit.getText().trim();
+            final String keyStoreAlias = keyStoreAliasEdit.getText().trim();
+            final String keyStoreAliasPassword = keyStoreAliasPasswordEdit.getText().trim();
+            if (sourceDir == null | !sourceDir.isDirectory()){
+                JOptionPane.showMessageDialog(confirm,"源文件夹错误");
+                return;
+            }
+            if (targetDir == null | !targetDir.isDirectory()){
+                JOptionPane.showMessageDialog(confirm,"目标文件夹错误");
+                return;
+            }
+            if (keyStoreFile == null | !keyStoreFile.isFile()){
+                JOptionPane.showMessageDialog(confirm,"keyStore文件错误");
+                return;
+            }
+            if (StringUtils.isEmpty(keyStorePassword)){
+                JOptionPane.showMessageDialog(confirm,"keyStore密码不能为空");
+                return;
+            }
+            if (StringUtils.isEmpty(keyStoreAlias)){
+                JOptionPane.showMessageDialog(confirm,"keyStore别名不能为空");
+                return;
+            }
+            if (StringUtils.isEmpty(keyStoreAliasPassword)){
+                JOptionPane.showMessageDialog(confirm,"别名密码不能为空");
+                return;
+            }
+
+            final File[] files = sourceDir.listFiles();
+            if (files != null){
+                LoadingDialog.show(new JDialog(),new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        for (int i = 0 ;i < files.length;i ++){
+                            String signStr = Signer.signedAndAligned(keyStoreFile,keyStorePassword,keyStoreAlias,keyStoreAliasPassword,files[i],new File(targetDir,files[i].getName().substring(0,files[i].getName().lastIndexOf(".")) + "_signed.apk"),false);
+                            System.out.println(signStr + "");
+                        }
+                    }
+                }),"签名中……");
+
+
+            }
         }
     }
 }
